@@ -1,4 +1,3 @@
-
 # OpenSparrow 🐦 
 
 ![License](https://img.shields.io/badge/license-LGPL%20v3-blue.svg)
@@ -15,25 +14,25 @@ Rdzeniem systemu jest architektura "Schema-Driven". Zamiast pisać powtarzalny k
 
 ### ✨ Główne funkcje platformy
 
+* **Zero-Configuration Setup:** Zapomnij o ręcznym edytowaniu plików PHP. Połączysz się z bazą danych i zainicjujesz strukturę systemu za pomocą jednego kliknięcia prosto z poziomu przeglądarki!
 * **Napędzany JSON-em Data Grid (CRUD):** Automatyczne generowanie tabel i formularzy na podstawie `schema.json`. Obsługuje m.in. relacje kluczy obcych (wyświetlanie nazw zamiast ID), zagnieżdżone podtabele (Subtables), walidację pól (`not_null`, `readonly`) oraz niestandardowe kolorowanie statusów (`enum_colors`).
-* **Interfejs API & Bezpieczeństwo:**
-    Wbudowane, dynamiczne `api.php` obsługujące zapytania GET, POST, PATCH (edycja komórek w locie) i DELETE. Posiada twardą weryfikację sesji użytkownika i automatycznie loguje wszystkie modyfikacje danych do wewnętrznego dziennika (Audit Trail).
-* **Wizualny Panel Administratora:**
-    Wbudowany interfejs graficzny (`/admin`) pozwalający na wyklikanie całej struktury aplikacji bez konieczności ręcznej edycji plików. Posiada dedykowane zakładki do edycji Schematu, Dashboardów i Kalendarza oraz przełącznik "Debug Mode" ułatwiający deweloperom analizę błędów.
-* **Silnik Dashboardów:**
-    Mechanizm agregacji danych prosto z bazy PostgreSQL (obsługa COUNT, SUM, AVG, MIN, MAX i GROUP BY). Pozwala na szybkie budowanie kafelków statystycznych, list rankingowych i wykresów konfigurowanych w `dashboard.json`.
-* **Kalendarz i Automatyczne Powiadomienia (CRON):**
-    Możliwość zmapowania dowolnej tabeli z datą na widok kalendarza. Dedykowany skrypt `cron_notifications.php` codziennie sprawdza nadchodzące zdarzenia, łączy je z przypisanymi użytkownikami i automatycznie umieszcza powiadomienia w bazie danych, nie dopuszczając do powstawania duplikatów.
+* **Interfejs API & Bezpieczeństwo:** Wbudowane, dynamiczne `api.php` obsługujące zapytania GET, POST, PATCH (edycja komórek w locie) i DELETE. Posiada twardą weryfikację sesji użytkownika i automatycznie loguje wszystkie modyfikacje danych do wewnętrznego dziennika (Audit Trail).
+* **Wizualny Panel Administratora:** Wbudowany interfejs graficzny (`/admin`) pozwalający na wyklikanie całej struktury aplikacji. Posiada dedykowane zakładki do edycji Schematu, Dashboardów, Kalendarza, a także wbudowaną Diagnostykę Serwera (System Health) i przełącznik "Debug Mode".
+* **Silnik Dashboardów:** Mechanizm agregacji danych prosto z bazy PostgreSQL (obsługa COUNT, SUM, AVG, MIN, MAX i GROUP BY). Pozwala na szybkie budowanie kafelków statystycznych, list rankingowych i wykresów konfigurowanych w `dashboard.json`.
+* **Kalendarz i Automatyczne Powiadomienia (CRON):** Możliwość zmapowania dowolnej tabeli z datą na widok kalendarza. Dedykowany skrypt `cron_notifications.php` codziennie sprawdza nadchodzące zdarzenia i bezpiecznie wysyła powiadomienia do użytkowników.
 
-### 🚀 Szybki start
+### 🚀 Szybki start (Instalacja w 60 sekund)
 
 1. Sklonuj repozytorium na swój serwer (wymagane PHP > 8.0 i baza PostgreSQL).
-```bash
+
 git clone [https://github.com/wrobeltomasz/open-sparrow.git](https://github.com/wrobeltomasz/open-sparrow.git)
 
-```
-2. Skonfiguruj dostęp do bazy danych w plikach konfiguracyjnych i zaimportuj startową bazę SQL.
-3. Przejdź pod adres `/login.php`, zaloguj się i otwórz katalog `/admin`, aby w graficznym interfejsie zbudować swój system!
+
+2. Otwórz w przeglądarce adres Twojego projektu z końcówką `/admin` (np. `http://localhost/open-sparrow/admin`).
+3. Zaloguj się domyślnym hasłem: **`admin`** (Zalecamy jego zmianę w zakładce *Security* po zalogowaniu).
+4. Przejdź do zakładki **Database**, wpisz dane dostępowe do swojej (pustej) bazy PostgreSQL i kliknij **Save File**.
+5. Przejdź do zakładki **System Health** i kliknij niebieski przycisk **"Initialize System Tables"**. System automatycznie utworzy schemat `app`, wymagane tabele użytkowników oraz logów.
+6. Gotowe! Przejdź do zakładki **Schema**, kliknij "Sync DB Tables" i rozpocznij budowę swojego CRM-a!
 
 ### 📄 Licencja
 
@@ -50,28 +49,26 @@ At the core of the system is its "Schema-Driven" architecture. Instead of writin
 
 ### ✨ Core Features
 
-* **JSON-Driven Data Grid (CRUD):**
-Automatically generates tables and forms based on `schema.json`. It fully supports foreign key resolution (displaying names instead of IDs), nested sub-tables, field constraints (`not_null`, `readonly`), and custom status coloring (`enum_colors`).
-* **Dynamic API & Security:**
-The built-in `api.php` safely processes GET, POST, PATCH (for inline cell edits), and DELETE requests. It enforces strict session-based authentication and automatically records all data modifications into a secure internal audit log.
-* **Visual Admin Panel:**
-A built-in GUI (`/admin`) that allows you to configure your entire application structure without touching a single line of code. It features dedicated tabs for Schema, Dashboards, and Calendar configurations, along with a "Debug Mode" toggle for developers.
-* **Dashboard Engine:**
-A robust data aggregation engine directly executing SQL operations (COUNT, SUM, AVG, MIN, MAX, GROUP BY) on PostgreSQL. It enables the quick construction of statistical tiles, ranked lists, and charts configured via `dashboard.json`.
-* **Calendar & Automated CRON Notifications:**
-Map any database table with a date column to a visual calendar. A dedicated background script (`cron_notifications.php`) checks for upcoming events, joins them with assigned users, and securely pushes smart notifications into the database without duplicating them.
+* **Zero-Configuration Setup:** Forget about manual config file editing. Connect to your database and initialize the entire system structure with a single click directly from your browser!
+* **JSON-Driven Data Grid (CRUD):** Automatically generates tables and forms based on `schema.json`. It fully supports foreign key resolution (displaying names instead of IDs), nested sub-tables, field constraints (`not_null`, `readonly`), and custom status coloring (`enum_colors`).
+* **Dynamic API & Security:** The built-in `api.php` safely processes GET, POST, PATCH (for inline cell edits), and DELETE requests. It enforces strict session-based authentication and automatically records all data modifications into a secure internal audit log.
+* **Visual Admin Panel:** A built-in GUI (`/admin`) that allows you to configure your entire application structure without touching a single line of code. It features dedicated tabs for Schema, Dashboards, Calendar configurations, built-in Server Diagnostics (System Health), and a "Debug Mode" toggle.
+* **Dashboard Engine:** A robust data aggregation engine directly executing SQL operations (COUNT, SUM, AVG, MIN, MAX, GROUP BY) on PostgreSQL. It enables the quick construction of statistical tiles, ranked lists, and charts configured via `dashboard.json`.
+* **Calendar & Automated CRON Notifications:** Map any database table with a date column to a visual calendar. A dedicated background script (`cron_notifications.php`) securely pushes smart notifications to users based on upcoming events.
 
-### 🚀 Quick Start
+### 🚀 Quick Start (60-Second Setup)
 
 1. Clone the repository to your server (PHP > 8.0 and PostgreSQL required).
-```bash
+
+
 git clone [https://github.com/wrobeltomasz/open-sparrow.git](https://github.com/wrobeltomasz/open-sparrow.git)
 
-```
 
-
-2. Configure your database access credentials and import the initial SQL structure.
-3. Access `/login.php`, log in, and navigate to the `/admin` panel to start building your system visually!
+2. Open your project URL in the browser pointing to the `/admin` directory (e.g., `http://localhost/open-sparrow/admin`).
+3. Log in using the default password: **`admin`** (We highly recommend changing this in the *Security* tab later).
+4. Navigate to the **Database** tab, enter your PostgreSQL credentials, and click **Save File**.
+5. Navigate to the **System Health** tab and click the **"Initialize System Tables"** button. The system will automatically create the `app` schema and the required core user/log tables.
+6. Done! Go to the **Schema** tab, click "Sync DB Tables," and start building your CRM visually!
 
 ### 📄 License
 

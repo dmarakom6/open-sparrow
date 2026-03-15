@@ -12,12 +12,14 @@ if (file_exists($securityFile)) {
     }
 }
 
+// Handle user logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['sparrow_admin_logged_in']);
     header("Location: index.php");
     exit;
 }
 
+// Handle login attempt
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_password'])) {
     if ($_POST['admin_password'] === $admin_password) {
         $_SESSION['sparrow_admin_logged_in'] = true;
@@ -28,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_password'])) {
     }
 }
 
+// Render login screen if not authenticated
 if (!isset($_SESSION['sparrow_admin_logged_in']) || $_SESSION['sparrow_admin_logged_in'] !== true) {
     ?>
     <!DOCTYPE html>
@@ -70,6 +73,8 @@ if (!isset($_SESSION['sparrow_admin_logged_in']) || $_SESSION['sparrow_admin_log
     <title>Sparrow Admin | Dashboard</title>
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="style.css?v=<?php echo filemtime('style.css'); ?>">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
     <header>
@@ -77,29 +82,31 @@ if (!isset($_SESSION['sparrow_admin_logged_in']) || $_SESSION['sparrow_admin_log
             <h1>Sparrow Admin</h1>
         </div>
         
-		<div class="admin-header-tabs">
+        <div class="admin-header-tabs">
             <button class="admin-tab active" data-file="schema">Schema</button>
             <button class="admin-tab" data-file="dashboard">Dashboard</button>
             <button class="admin-tab" data-file="calendar">Calendar</button>
             <button class="admin-tab" data-file="database">Database</button>
             <button class="admin-tab" data-file="security">Security</button>
-            <button class="admin-tab" data-file="health">System Health</button>
-            <button class="admin-tab" data-file="docs">Documentation</button>
+            <button class="admin-tab" data-file="health" style="font-weight: bold; color: #fbbf24;">System Health</button>
+            <button class="admin-tab" data-file="docs">Docs</button>
         </div>
 
         <div class="header-user-menu">
-            <label style="color: white; margin-right: 15px; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <label style="color: white; margin-right: 15px; font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; opacity: 0.8;">
                 <input type="checkbox" id="debugToggle" style="cursor: pointer; accent-color: var(--accent);">
-                Debug Mode
+                Debug
             </label>
             
-            <button id="btnExport" class="btn-logout" style="background: #10b981; border-color: #10b981; margin-right:5px;" title="Download JSON Backup">📥 Export Config</button>
-            <button id="btnImport" class="btn-logout" style="background: #f59e0b; border-color: #f59e0b; margin-right:15px;" title="Upload JSON Backup">📤 Import Config</button>
-            <input type="file" id="importFileInput" accept=".zip" style="display: none;">
+            <div style="display: flex; gap: 5px; margin-right: 15px; border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
+                <button id="btnExport" class="btn-logout" style="background: #10b981; border-color: #10b981;" title="Download ZIP Backup">📥 Export</button>
+                <button id="btnImport" class="btn-logout" style="background: #f59e0b; border-color: #f59e0b;" title="Upload ZIP Backup">📤 Import</button>
+                <input type="file" id="importFileInput" accept=".zip" style="display: none;">
+            </div>
 
-            <button id="btnSave" class="btn-logout" style="background: var(--accent); color: white; border-color: var(--accent);">Save File</button>
+            <button id="btnSave" class="btn-logout" style="background: var(--accent); color: white; border-color: var(--accent); font-weight: bold;">Save File</button>
             <button onclick="window.location.href='index.php?logout=1'" class="btn-logout" style="background: #ef4444; border-color: #ef4444;">Logout</button>
-            <button onclick="window.location.href='../index.php'" class="btn-logout">Back to CRM</button>
+            <button onclick="window.location.href='../index.php'" class="btn-logout">Exit</button>
         </div>
     </header>
 

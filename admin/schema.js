@@ -1,9 +1,10 @@
 // admin/schema.js
 import { createTextInput, createSelectInput, createCheckbox, createColorInput, createIconPicker, moveObjectKey } from './ui.js';
 
+// Sync tables from database
 export async function syncSchemaTables(currentConfig, schemaName, onSuccess, onError) {
     try {
-        const res = await fetch(`api.php?action=get_db_tables&schema_name=${encodeURIComponent(schemaName)}`);
+        const res = await fetch(`api.php?action=sync_schema&schema_name=${encodeURIComponent(schemaName)}`);
         const data = await res.json();
         
         if (data.status === 'success') {
@@ -26,6 +27,7 @@ export async function syncSchemaTables(currentConfig, schemaName, onSuccess, onE
     }
 }
 
+// Render the schema editor UI
 export function renderSchemaEditor(tableName, tableData, ctx) {
     const { workspaceEl, getTableOptions, renderEditor } = ctx;
     workspaceEl.innerHTML = `<h3>Table Properties: ${tableName}</h3>`;
@@ -38,36 +40,67 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
     btnSyncCols.className = 'btn-add';
     btnSyncCols.style.background = '#007ACC';
     btnSyncCols.innerHTML = '🔍 Sync Columns from DB';
+    
+    // Fetch and sync columns from database
     btnSyncCols.onclick = async () => {
-        const schemaName = tableData.schema || 'app'; 
-        const res = await fetch(`api.php?action=get_db_columns&schema_name=${encodeURIComponent(schemaName)}&table=${tableName}`);
-        const data = await res.json();
-        
-        if (data.status === 'success') {
-            let added = 0;
-            data.columns.forEach(col => {
-                if (!tableData.columns[col.column_name]) {
-                    const isEnum = col.enum_values !== null;
-                    const isNotNull = col.is_nullable === 'NO'; 
-                    
-                    let typeName = col.data_type;
-                    if (isEnum || String(typeName).toUpperCase() === 'USER-DEFINED') {
-                        typeName = 'enum';
-                    }
+        try {
+            const schemaName = tableData.schema || 'public'; 
+            const res = await fetch(`api.php?action=get_db_columns&schema_name=${encodeURIComponent(schemaName)}&table=${encodeURIComponent(tableName)}`);
+            
+            const rawText = await res.text();
+            
+            if (!res.ok) {
+                alert("HTTP Error " + res.status + ":\n" + rawText);
+                return;
+            }
+            
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (parseErr) {
+                alert("Server returned PHP error instead of JSON:\n\n" + rawText);
+                console.error("RAW RESPONSE:", rawText);
+                return;
+            }
+            
+            if (data.status === 'success') {
+                let added = 0;
+                data.columns.forEach(col => {
+                    if (!tableData.columns[col.column_name]) {
+                        
+                        // FIX: Check safely if enum_values is a real array
+                        const isEnum = Array.isArray(col.enum_values);
+                        const isNotNull = col.is_nullable === 'NO'; 
+                        
+                        let typeName = col.data_type;
+                        if (isEnum || String(typeName).toUpperCase() === 'USER-DEFINED') {
+                            typeName = 'enum';
+                        }
 
-                    tableData.columns[col.column_name] = {
-                        display_name: col.column_name.replace(/_/g, ' ').toUpperCase(),
-                        type: typeName,
-                        show_in_grid: true, show_in_edit: true, not_null: isNotNull
-                    };
-                    if (isEnum) tableData.columns[col.column_name].options = col.enum_values;
-                    added++;
-                }
-            });
-            alert(`Added ${added} new columns.`);
-            renderEditor(tableName, tableData, false);
-        } else {
-            alert(data.error || 'Failed to sync columns.');
+                        // Make ID readonly by default
+                        const isIdColumn = col.column_name.toLowerCase() === 'id';
+
+                        tableData.columns[col.column_name] = {
+                            display_name: col.column_name.replace(/_/g, ' ').toUpperCase(),
+                            type: typeName,
+                            show_in_grid: true, 
+                            show_in_edit: true, 
+                            not_null: isNotNull,
+                            readonly: isIdColumn
+                        };
+                        
+                        if (isEnum) tableData.columns[col.column_name].options = col.enum_values;
+                        added++;
+                    }
+                });
+                alert(`Added ${added} new columns.`);
+                renderEditor(tableName, tableData, false);
+            } else {
+                alert("API Error:\n" + (data.error || 'Failed to sync columns.'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Communication error. Check console.');
         }
     };
     workspaceEl.appendChild(btnSyncCols);
@@ -106,7 +139,8 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
         const moveControls = document.createElement('div');
         
         const btnUp = document.createElement('button');
-        btnUp.innerHTML = '⬆️'; btnUp.title = 'Move Up';
+        btnUp.innerHTML = '⬆️'; 
+        btnUp.title = 'Move Up';
         btnUp.style.cssText = 'background:none; border:none; cursor:pointer; font-size:16px; margin-right:5px;';
         if (index === 0) { btnUp.disabled = true; btnUp.style.opacity = '0.3'; btnUp.style.cursor = 'default'; }
         btnUp.onclick = () => {
@@ -115,7 +149,8 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
         };
 
         const btnDown = document.createElement('button');
-        btnDown.innerHTML = '⬇️'; btnDown.title = 'Move Down';
+        btnDown.innerHTML = '⬇️'; 
+        btnDown.title = 'Move Down';
         btnDown.style.cssText = 'background:none; border:none; cursor:pointer; font-size:16px;';
         if (index === colKeys.length - 1) { btnDown.disabled = true; btnDown.style.opacity = '0.3'; btnDown.style.cursor = 'default'; }
         btnDown.onclick = () => {
@@ -145,6 +180,7 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
 
         const isTypeEnum = String(colCfg.type || '').toLowerCase() === 'enum';
 
+        // Render color picker for ENUM types
         if (isTypeEnum && colCfg.options && colCfg.options.length > 0) {
             const colorsContainer = document.createElement('div');
             colorsContainer.style.marginLeft = '20px';
@@ -153,7 +189,7 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
             colorsContainer.style.marginBottom = '15px';
             
             const colorsTitle = document.createElement('h5');
-            colorsTitle.textContent = '🎨 Enum Colors (Opcjonalnie)';
+            colorsTitle.textContent = '🎨 Enum Colors (Optional)';
             colorsTitle.style.marginTop = '0';
             colorsTitle.style.marginBottom = '10px';
             colorsContainer.appendChild(colorsTitle);
@@ -178,6 +214,7 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
             renderEditor(tableName, tableData, false); 
         }));
 
+        // Render additional foreign key settings if referenced table is chosen
         if (tableData.foreign_keys[colName] && tableData.foreign_keys[colName].reference_table) {
             const fkContainer = document.createElement('div');
             fkContainer.style.marginLeft = '20px'; fkContainer.style.paddingLeft = '10px'; fkContainer.style.borderLeft = '2px solid var(--accent)'; fkContainer.style.marginBottom = '15px';
@@ -202,6 +239,7 @@ export function renderSchemaEditor(tableName, tableData, ctx) {
     const subContainer = document.createElement('div');
     workspaceEl.appendChild(subContainer);
 
+    // Render configuration for subtables
     const renderSubtables = () => {
         subContainer.innerHTML = '';
         tableData.subtables.forEach((subCfg, index) => {
