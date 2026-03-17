@@ -13,6 +13,9 @@ if (!isset($_SESSION['sparrow_admin_logged_in']) || $_SESSION['sparrow_admin_log
 $action = $_GET['action'] ?? '';
 $file = $_GET['file'] ?? '';
 
+// Set this to true ONLY on your public demo server
+$isDemoMode = false; 
+
 // Initialize database tables
 if ($action === 'init_db') {
     try {
@@ -185,8 +188,30 @@ $allowedFiles = ['schema', 'dashboard', 'calendar', 'database', 'security'];
 if ($action === 'get' && in_array($file, $allowedFiles, true)) {
     $filePath = __DIR__ . '/../includes/' . $file . '.json';
     header('Content-Type: application/json');
+    
     if (file_exists($filePath)) {
-        echo file_get_contents($filePath);
+        $fileContent = file_get_contents($filePath);
+        
+        // Mask sensitive data in Demo Mode
+        if ($isDemoMode && $file === 'database') {
+            $dbData = json_decode($fileContent, true);
+            $dbData['host'] = 'hidden-for-demo.postgres.database.azure.com';
+            $dbData['user'] = 'demo_user_hidden';
+            $dbData['password'] = '********';
+            $dbData['dbname'] = 'demo_db';
+            echo json_encode($dbData);
+        } 
+        // Mask admin password in Demo Mode
+        elseif ($isDemoMode && $file === 'security') {
+            $secData = json_decode($fileContent, true);
+            if (isset($secData['admin_password'])) {
+                $secData['admin_password'] = '********';
+            }
+            echo json_encode($secData);
+        }
+        else {
+            echo $fileContent;
+        }
     } else {
         echo json_encode(new stdClass());
     }
@@ -195,6 +220,14 @@ if ($action === 'get' && in_array($file, $allowedFiles, true)) {
 
 // Save content to a JSON config file
 if ($action === 'save' && in_array($file, $allowedFiles, true)) {
+    
+    // Block saving sensitive files in Demo Mode
+    if ($isDemoMode && in_array($file, ['database', 'security'])) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'error' => 'Saving ' . $file . ' configuration is disabled in Demo Mode.']);
+        exit;
+    }
+
     $data = file_get_contents('php://input');
     $filePath = __DIR__ . '/../includes/' . $file . '.json';
 
