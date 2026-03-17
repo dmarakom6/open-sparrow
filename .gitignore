@@ -27,3 +27,11 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Config json
+include/security.json
+include/schema.json
+include/database.json
+include/dashboard.json
+include/calendar.json
+include/php.ini
