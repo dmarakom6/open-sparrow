@@ -62,9 +62,7 @@
             </div>
         </div>
 
-        <a href="/admin/index.php" title="Admin" style="text-decoration: none; font-size: 20px; margin-right: 15px; vertical-align: middle; display: inline-block; transition: opacity 0.2s;">
-            ⚙️
-        </a>
+        <a href="/admin/index.php" title="Admin" style="text-decoration: none; font-size: 20px; margin-right: 15px; vertical-align: middle; display: inline-block; transition: opacity 0.2s;">⚙️</a>
 
         <button onclick="window.location.href='logout.php'" class="btn-logout">
             Logout
