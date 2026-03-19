@@ -1,3 +1,4 @@
+// admin/app.js
 import { moveArrayItem, moveObjectKey, createTextInput, createIconPicker } from './ui.js';
 import { syncSchemaTables, renderSchemaEditor } from './schema.js';
 import { renderDashboardLayout, renderDashboardEditor, initDashboardUI } from './dashboard.js';
@@ -6,6 +7,7 @@ import { renderDatabaseEditor } from './database.js';
 import { renderSecurityEditor } from './security.js'; 
 import { renderHealthDashboard } from './health.js';  
 import { renderDocumentation } from './docs.js';
+import { renderUsersEditor } from './users.js'; // ZMIANA: Import nowego modułu użytkowników
 
 let currentConfig = null;
 let currentFile = 'schema'; 
@@ -99,7 +101,8 @@ function getColumnOptionsForTable(tableName) {
 
 async function loadConfigFile(fileName) {
 
-    if (fileName === 'health' || fileName === 'docs') {
+    // ZMIANA: Dodano obsługę pliku 'users'
+    if (fileName === 'health' || fileName === 'docs' || fileName === 'users') {
         currentConfig = null;
         renderSidebar();
         renderEditor(fileName.toUpperCase(), null, false);
@@ -165,7 +168,8 @@ function clearConfig() {
 function renderSidebar() {
     itemListEl.innerHTML = '';
     
-    if (currentFile === 'database' || currentFile === 'security' || currentFile === 'health' || currentFile === 'docs') {
+    // ZMIANA: Zmiana nagłówka i wyświetlania dla zakładki users
+    if (currentFile === 'database' || currentFile === 'security' || currentFile === 'health' || currentFile === 'docs' || currentFile === 'users') {
         document.getElementById('sidebarTitle').textContent = currentFile.charAt(0).toUpperCase() + currentFile.slice(1);
         const actionDiv = document.getElementById('sidebarActions');
         if (actionDiv) actionDiv.innerHTML = ''; 
@@ -174,6 +178,7 @@ function renderSidebar() {
         let title = "⚙️ Settings";
         if (currentFile === 'health') title = "⚙️ View Diagnostics";
         if (currentFile === 'docs') title = "📖 Read Documentation";
+        if (currentFile === 'users') title = "👥 System Users"; // ZMIANA
         
         li.textContent = title; 
         li.style.fontWeight = 'bold'; 
@@ -279,10 +284,18 @@ function renderEditor(key, itemData, isArray) {
     workspaceEl.innerHTML = '';
     const ctx = { workspaceEl, currentConfig, getTableOptions, getColumnOptionsForTable, renderEditor, renderSidebar };
     
+    // ZMIANA: Ukrywanie przycisku "Save File" dla widoków API, aby nie mylić użytkownika
+    if (['health', 'docs', 'users'].includes(key.toLowerCase())) {
+        btnSave.style.display = 'none';
+    } else {
+        btnSave.style.display = 'inline-block';
+    }
+
     if (currentFile === 'database') return renderDatabaseEditor(key, itemData, isArray, ctx);
     if (currentFile === 'security') return renderSecurityEditor(key, itemData, isArray, ctx);
     if (currentFile === 'health') return renderHealthDashboard(ctx);
     if (currentFile === 'docs') return renderDocumentation(ctx);
+    if (currentFile === 'users') return renderUsersEditor(ctx); // ZMIANA: Inicjalizacja komponentu users
 
     if (key === 'LAYOUT' && currentFile === 'dashboard') return renderDashboardLayout(ctx);
     if (key === 'LAYOUT' && currentFile === 'calendar') {

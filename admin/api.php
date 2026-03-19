@@ -16,7 +16,7 @@ $file = $_GET['file'] ?? '';
 // Set this to false for GitHub public release
 $isDemoMode = false; 
 
-// Initialize database tables
+// Initialize database tables and migrations
 if ($action === 'init_db') {
     try {
         require_once __DIR__ . '/../includes/db.php';
@@ -29,9 +29,12 @@ if ($action === 'init_db') {
                 id serial4 NOT NULL,
                 username varchar(50) NOT NULL,
                 password_hash varchar(255) NOT NULL,
+                is_active bool DEFAULT true,
                 CONSTRAINT users_pkey PRIMARY KEY (id),
                 CONSTRAINT users_username_key UNIQUE (username)
             )",
+            
+            "ALTER TABLE app.users ADD COLUMN IF NOT EXISTS is_active bool DEFAULT true",
 
             "CREATE TABLE IF NOT EXISTS app.users_log (
                 id serial4 NOT NULL,
@@ -58,8 +61,8 @@ if ($action === 'init_db') {
                     UNIQUE (user_id, source_table, source_id, notify_date)
             )",
 
-            "INSERT INTO app.users (username, password_hash)
-             SELECT 'test', '\$2a\$12\$oqxkKJu53qLCJSnmyxs1BeIDeP81M.cstuhm7T6hS0HPMXYqaK2Je'
+            "INSERT INTO app.users (username, password_hash, is_active)
+             SELECT 'test', '\$2a\$12\$oqxkKJu53qLCJSnmyxs1BeIDeP81M.cstuhm7T6hS0HPMXYqaK2Je', true
              WHERE NOT EXISTS (SELECT 1 FROM app.users WHERE username = 'test')"
         ];
 
@@ -74,6 +77,104 @@ if ($action === 'init_db') {
         echo json_encode(['status' => 'success', 'message' => 'System tables initialized successfully.']);
     } catch (Exception $e) {
         header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Fetch list of all system users
+if ($action === 'users_list') {
+    header('Content-Type: application/json');
+    try {
+        require_once __DIR__ . '/../includes/db.php';
+        $conn = db_connect();
+        
+        $sql = "SELECT id, username, is_active FROM app.users ORDER BY id ASC";
+        $res = pg_query($conn, $sql);
+        
+        if (!$res) {
+            throw new Exception(pg_last_error($conn));
+        }
+
+        $users = [];
+        while ($row = pg_fetch_assoc($res)) {
+            $row['is_active'] = ($row['is_active'] === 't' || $row['is_active'] === true);
+            $users[] = $row;
+        }
+
+        echo json_encode(['status' => 'success', 'users' => $users]);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Add a new user securely
+if ($action === 'users_add') {
+    header('Content-Type: application/json');
+    if ($isDemoMode) {
+        echo json_encode(['status' => 'error', 'error' => 'Action disabled in Demo Mode.']);
+        exit;
+    }
+
+    $data = json_decode(file_get_contents('php://input'), true);
+    $username = trim($data['username'] ?? '');
+    $password = $data['password'] ?? '';
+
+    if (empty($username) || empty($password)) {
+        echo json_encode(['status' => 'error', 'error' => 'Username and password are required.']);
+        exit;
+    }
+
+    try {
+        require_once __DIR__ . '/../includes/db.php';
+        $conn = db_connect();
+        
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $sql = "INSERT INTO app.users (username, password_hash, is_active) VALUES ($1, $2, true)";
+        $res = pg_query_params($conn, $sql, [$username, $hash]);
+        
+        if (!$res) {
+            throw new Exception(pg_last_error($conn));
+        }
+
+        echo json_encode(['status' => 'success']);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Toggle user activation status
+if ($action === 'users_toggle') {
+    header('Content-Type: application/json');
+    if ($isDemoMode) {
+        echo json_encode(['status' => 'error', 'error' => 'Action disabled in Demo Mode.']);
+        exit;
+    }
+
+    $data = json_decode(file_get_contents('php://input'), true);
+    $userId = (int)($data['id'] ?? 0);
+    $isActive = (bool)($data['is_active'] ?? false);
+
+    if ($userId <= 0) {
+        echo json_encode(['status' => 'error', 'error' => 'Invalid user ID.']);
+        exit;
+    }
+
+    try {
+        require_once __DIR__ . '/../includes/db.php';
+        $conn = db_connect();
+        
+        $sql = "UPDATE app.users SET is_active = $1 WHERE id = $2";
+        $res = pg_query_params($conn, $sql, [$isActive ? 'true' : 'false', $userId]);
+        
+        if (!$res) {
+            throw new Exception(pg_last_error($conn));
+        }
+
+        echo json_encode(['status' => 'success']);
+    } catch (Exception $e) {
         echo json_encode(['status' => 'error', 'error' => $e->getMessage()]);
     }
     exit;
@@ -111,7 +212,6 @@ if ($action === 'health') {
 
 // Export JSON configurations as a ZIP file
 if ($action === 'export') {
-    // Check if ZIP extension is enabled
     if (!class_exists('ZipArchive')) {
         http_response_code(500);
         header('Content-Type: application/json');
@@ -149,7 +249,6 @@ if ($action === 'export') {
 
 // Import JSON configurations from a ZIP file safely
 if ($action === 'import' && isset($_FILES['backup_file'])) {
-    // Check if ZIP extension is enabled
     if (!class_exists('ZipArchive')) {
         http_response_code(500);
         header('Content-Type: application/json');
