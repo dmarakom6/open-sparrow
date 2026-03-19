@@ -13,7 +13,7 @@ if (!isset($_SESSION['sparrow_admin_logged_in']) || $_SESSION['sparrow_admin_log
 $action = $_GET['action'] ?? '';
 $file = $_GET['file'] ?? '';
 
-// Set this to true ONLY on your public demo server
+// Set this to false for GitHub public release
 $isDemoMode = false; 
 
 // Initialize database tables
@@ -111,6 +111,14 @@ if ($action === 'health') {
 
 // Export JSON configurations as a ZIP file
 if ($action === 'export') {
+    // Check if ZIP extension is enabled
+    if (!class_exists('ZipArchive')) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'PHP ZIP extension is disabled. Enable extension=zip in php.ini.']);
+        exit;
+    }
+
     $zip = new ZipArchive();
     $zipFile = sys_get_temp_dir() . '/sparrow_config_' . time() . '.zip';
 
@@ -139,16 +147,47 @@ if ($action === 'export') {
     }
 }
 
-// Import JSON configurations from a ZIP file
+// Import JSON configurations from a ZIP file safely
 if ($action === 'import' && isset($_FILES['backup_file'])) {
+    // Check if ZIP extension is enabled
+    if (!class_exists('ZipArchive')) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'PHP ZIP extension is disabled. Enable extension=zip in php.ini.']);
+        exit;
+    }
+
     $zip = new ZipArchive();
     if ($zip->open($_FILES['backup_file']['tmp_name']) === TRUE) {
-        $zip->extractTo(__DIR__ . '/../includes/');
+        $extractPath = __DIR__ . '/../includes/';
+        $validFiles = [];
+        
+        // Validate each file inside the archive
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+            
+            // Block path traversal characters and enforce .json extension to prevent RCE
+            if (str_contains($filename, '../') || str_contains($filename, '..\\') || substr($filename, -5) !== '.json') {
+                $zip->close();
+                http_response_code(400);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Invalid file detected. Only safe .json files are allowed.']);
+                exit;
+            }
+            $validFiles[] = $filename;
+        }
+        
+        // Extract only the validated files
+        foreach ($validFiles as $file) {
+            $zip->extractTo($extractPath, $file);
+        }
+        
         $zip->close();
         header('Content-Type: application/json');
         echo json_encode(['status' => 'success']);
         exit;
     }
+    
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode(['error' => 'Invalid zip file']);
@@ -232,11 +271,21 @@ if ($action === 'save' && in_array($file, $allowedFiles, true)) {
     $filePath = __DIR__ . '/../includes/' . $file . '.json';
 
     header('Content-Type: application/json');
-    if (json_decode($data) !== null) {
+    $parsedData = json_decode($data, true);
+    
+    if ($parsedData !== null) {
+        
+        // Hash the admin password securely before saving if it is not hashed already
+        if ($file === 'security' && !empty($parsedData['admin_password'])) {
+            if (password_get_info($parsedData['admin_password'])['algo'] === 0) {
+                $parsedData['admin_password'] = password_hash($parsedData['admin_password'], PASSWORD_DEFAULT);
+            }
+        }
+        
         if (!is_dir(__DIR__ . '/../includes/')) {
             mkdir(__DIR__ . '/../includes/', 0777, true);
         }
-        file_put_contents($filePath, $data);
+        file_put_contents($filePath, json_encode($parsedData, JSON_PRETTY_PRINT));
         echo json_encode(['status' => 'success']);
     } else {
         echo json_encode(['status' => 'error', 'error' => 'Invalid JSON']);
@@ -305,9 +354,12 @@ if ($action === 'get_db_columns') {
             
             $enumValues = null;
 
-            // Fetch ENUM values only for user-defined types
+            // Fetch ENUM values only for user-defined types safely using pg_escape_identifier
             if ($dataType === 'USER-DEFINED') {
-                $enumSql = "SELECT unnest(enum_range(NULL::\"$schemaName\".\"$udtName\"))::varchar AS enum_value";
+                $safeSchema = pg_escape_identifier($conn, $schemaName);
+                $safeUdt = pg_escape_identifier($conn, $udtName);
+                
+                $enumSql = "SELECT unnest(enum_range(NULL::$safeSchema.$safeUdt))::varchar AS enum_value";
                 $enumRes = @pg_query($conn, $enumSql);
                 if ($enumRes) {
                     $enumValues = [];

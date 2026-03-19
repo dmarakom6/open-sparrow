@@ -1,14 +1,21 @@
 <?php
 session_start();
 
-// Default password for fresh GitHub installation
-$admin_password = 'admin'; 
+// Default password hash for fresh installation
+$admin_password_hash = password_hash('admin', PASSWORD_DEFAULT); 
 
 $securityFile = __DIR__ . '/../includes/security.json';
 if (file_exists($securityFile)) {
     $secData = json_decode(file_get_contents($securityFile), true);
     if (isset($secData['admin_password']) && $secData['admin_password'] !== '') {
-        $admin_password = $secData['admin_password'];
+        $storedPass = $secData['admin_password'];
+        
+        // Hash the stored password if it is still in plaintext for backwards compatibility
+        if (password_get_info($storedPass)['algo'] === 0) {
+            $admin_password_hash = password_hash($storedPass, PASSWORD_DEFAULT);
+        } else {
+            $admin_password_hash = $storedPass;
+        }
     }
 }
 
@@ -19,9 +26,9 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-// Handle login attempt
+// Handle login attempt using secure hash verification
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_password'])) {
-    if ($_POST['admin_password'] === $admin_password) {
+    if (password_verify($_POST['admin_password'], $admin_password_hash)) {
         $_SESSION['sparrow_admin_logged_in'] = true;
         header("Location: index.php");
         exit;
@@ -73,7 +80,6 @@ if (!isset($_SESSION['sparrow_admin_logged_in']) || $_SESSION['sparrow_admin_log
     <title>Sparrow Admin | Dashboard</title>
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="style.css?v=<?php echo filemtime('style.css'); ?>">
-    
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
