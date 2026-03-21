@@ -137,8 +137,7 @@ Open the admin panel:
 
 Log in with default credentials:
 
-- Username: admin
-- Password: admin
+- Password: `admin` (no username required — the admin panel only asks for a password)
 
 Then go to the Database tab:
 
@@ -182,6 +181,10 @@ After setup:
 1. Open the Schema tab and sync existing tables.
 2. Configure views and field behavior.
 3. Use `index.php`, `dashboard.php`, and `calendar.php` as your runtime entry points.
+
+On a fresh install, a default app user is seeded automatically (username: `test`).
+Use these credentials to log into the main app at `login.php`.
+Change them before going to production.
 
 ---
 
