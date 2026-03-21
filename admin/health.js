@@ -58,7 +58,15 @@ export async function renderHealthDashboard(ctx) {
                 initBtn.innerText = "Processing...";
 
                 try {
-                    const setupRes = await fetch('api.php?action=init_db');
+					const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+					const setupRes = await fetch('api.php?action=init_db', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-CSRF-Token': csrfToken
+						}
+					});
                     const result = await setupRes.json();
                     if (result.status === 'success') {
                         alert("Success! System tables initialized. You can now sync them in the Schema tab.");
