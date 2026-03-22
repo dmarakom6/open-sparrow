@@ -1,0 +1,33 @@
+name: Update Directory Tree
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  update-readme-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate Directory Tree
+        uses: Zen-Liu/directory-tree-action@v1
+        with:
+
+          exclude: '.git|.github|vendor|node_modules'
+          output: 'README.md'
+
+      - name: Commit and Push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: automatic directory tree update [skip ci]"
+          file_pattern: 'README.md'
