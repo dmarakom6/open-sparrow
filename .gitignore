@@ -35,3 +35,7 @@ include/database.json
 include/dashboard.json
 include/calendar.json
 include/php.ini
+
+# CodeSniffer
+phpcs.phar
+phpcbf.phar
